@@ -7,11 +7,17 @@ import pytest
 os.environ["TARAZU_DB"] = os.path.join(tempfile.mkdtemp(), "t.sqlite3")
 os.environ["TARAZU_DATA"] = tempfile.mkdtemp()
 
-from fastapi.testclient import TestClient  # noqa: E402
+if os.environ.get("TARAZU_LITE"):  # the mobile app's in-process dispatcher, checked against the same tests
+    from tarazu import lite  # noqa: E402
+
+    lite.install()
+    from lite_client import LiteClient as Client  # noqa: E402
+else:
+    from fastapi.testclient import TestClient as Client  # noqa: E402
 
 from tarazu.api import app, store  # noqa: E402
 
-c = TestClient(app)
+c = Client(app)
 
 
 @pytest.fixture()
@@ -155,3 +161,21 @@ def test_convert_fine_metal_is_computed_server_side():
     assert r["fine_g"] == "10.6840"  # 11.6638 g x 0.916, rounded half-even to 0.1 mg
     assert "fine_g" not in c.post("/api/convert", json={"value": "1", "unit": "tola"}).json()
     assert c.post("/api/convert", json={"value": "1", "unit": "g", "fineness": "1.2"}).status_code == 422
+
+
+def test_slip_photo_upload_and_fetch(job):
+    j, k, jw = job
+    png = bytes([137, 80, 78, 71, 13, 10, 26, 10]) + bytes(64)
+    r = c.post("/api/documents", files={"file": ("slip.png", png, "image/png")}, data={"job_id": j["job_id"]})
+    assert r.status_code == 200, r.text
+    did = r.json()["document_id"]
+    got = c.get(f"/api/documents/{did}")
+    assert got.status_code == 200 and got.content == png and got.headers["content-type"].startswith("image/png")
+    assert c.post("/api/documents", files={"file": ("a.txt", b"hi", "text/plain")}).status_code == 422
+    assert c.get("/api/documents/doc_missing").status_code == 404
+
+
+def test_validation_errors_are_listed(job):
+    r = c.post("/api/convert", json={"unit": "g"})
+    assert r.status_code == 422 and isinstance(r.json()["detail"], list)
+    assert c.get("/api/nowhere").status_code == 404

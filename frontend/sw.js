@@ -1,8 +1,8 @@
 // Offline shell: the app opens with no signal; records are queued by api.js and synced later.
-const CACHE = "tarazu-shell-v6";
+const CACHE = "tarazu-shell-v7";
 const FONTS = "tarazu-fonts-v1"; // web fonts are cached after first load so typography survives offline
 const SHELL = ["/", "/index.html", "/app", "/app.html", "/demo.html", "/manifest.webmanifest", "/assets/img/tarazu.svg",
-  "/assets/css/base.css", "/assets/css/landing.css", "/assets/css/app.css", "/assets/css/chalk.css", "/assets/css/tour.css", "/assets/css/motion.css",
+  "/assets/css/fonts.css", "/assets/css/base.css", "/assets/css/landing.css", "/assets/css/app.css", "/assets/css/chalk.css", "/assets/css/tour.css", "/assets/css/motion.css",
   "/assets/js/api.js", "/assets/js/charts.js", "/assets/js/speech.js", "/assets/js/i18n.js", "/assets/js/icons.js", "/assets/js/ui.js", "/assets/js/bench.js",
   "/assets/js/app.js", "/assets/js/landing.js", "/assets/js/chalk.js", "/assets/js/tour.js"];
 

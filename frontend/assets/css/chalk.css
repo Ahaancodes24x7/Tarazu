@@ -126,3 +126,6 @@
 
 @keyframes pulse-txt { 50% { opacity: .35; } }
 .ctrl { min-width: 44px; min-height: 44px; }
+
+/* phones that draw under the status bar */
+body { padding-top: var(--sat); padding-bottom: var(--sab); }

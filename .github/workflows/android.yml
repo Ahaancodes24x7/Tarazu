@@ -1,0 +1,59 @@
+name: Tests and Android app
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Engine, API, lite dispatcher and trial toolkit tests
+        working-directory: backend
+        run: python -m pytest -q
+
+  apk:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Cache Pyodide downloads
+        uses: actions/cache@v4
+        with:
+          path: mobile/.cache
+          key: pyodide-${{ hashFiles('tools/build_mobile.py') }}
+      - name: Build the web bundle and sync it into the Android project
+        working-directory: mobile
+        run: |
+          npm ci
+          python ../tools/build_mobile.py
+          npx cap sync android
+      - name: Build the APK
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tarazu-android-apk
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk

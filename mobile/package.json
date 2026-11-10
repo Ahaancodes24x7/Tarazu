@@ -1,0 +1,22 @@
+{
+  "name": "tarazu-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tarazu as an offline Android app: the same engine, running on the phone.",
+  "scripts": {
+    "build": "python ../tools/build_mobile.py && npx cap sync android",
+    "icons": "npx @capacitor/assets generate --android --iconBackgroundColor \"#060508\" --iconBackgroundColorDark \"#060508\" --splashBackgroundColor \"#060508\" --splashBackgroundColorDark \"#060508\"",
+    "apk": "npm run build && cd android && ./gradlew assembleDebug",
+    "open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/filesystem": "^8.0.0",
+    "@capacitor/share": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.0.0"
+  }
+}

@@ -12,6 +12,7 @@ and combinations with OR-Tools CP-SAT (brute force if CP-SAT is missing).
 """
 from __future__ import annotations
 
+import heapq
 import itertools
 import math
 from dataclasses import dataclass, field
@@ -288,29 +289,60 @@ def _point_effect(es, target: Interval) -> Decimal:
     return min(max(want, lo), hi)
 
 
+def _exact_ints(values) -> tuple[list[int], int]:
+    """Scale Decimals to exact integers with one common power of ten (no rounding)."""
+    exp = min((v.as_tuple().exponent for v in values if v.is_finite()), default=0)
+    d = max(0, -int(exp))
+    return [int(v.scaleb(d)) for v in values], d
+
+
 def minimal_sets_bruteforce(cands: list[Edit], target: Interval, max_size: int = 3,
-                            limit_n_for_triples: int = 80) -> list[tuple[Edit, ...]]:
-    singles = [(e,) for e in cands if feasible((e,), target)]
+                            limit_n_for_triples: Optional[int] = None) -> list[tuple[Edit, ...]]:
+    """Every subset-minimal, conflict-free set of up to three edits whose effect range meets the target.
+
+    Exhaustive and exact. Effect bounds are scaled to integers once, so the inner
+    loops add machine integers instead of Decimals; a pair that already fits is
+    never extended, which is what makes every returned set minimal.
+    """
+    singles = [(e,) for e in cands if e.lo <= target.hi and e.hi >= target.lo]
     single_keys = {s[0].key for s in singles}
     rest = [e for e in cands if e.key not in single_keys]
-    out = list(singles)
-    pairs = []
-    if max_size >= 2:
-        for a, b in itertools.combinations(rest, 2):
-            if not _conflict((a, b)) and feasible((a, b), target):
-                pairs.append((a, b))
-        out += pairs
-    if max_size >= 3 and len(rest) <= limit_n_for_triples:
-        pair_keys = {frozenset(x.key for x in p) for p in pairs}
-        for t in itertools.combinations(rest, 3):
-            if _conflict(t):
-                continue
-            ks = [x.key for x in t]
-            if any(frozenset(c) in pair_keys for c in itertools.combinations(ks, 2)):
-                continue
-            if feasible(t, target):
-                out.append(t)
+    out: list[tuple[Edit, ...]] = list(singles)
+    n = len(rest)
+    if max_size < 2 or n < 2:
+        return out
+    ints, _ = _exact_ints([target.lo, target.hi] + [e.lo for e in rest] + [e.hi for e in rest])
+    t_lo, t_hi = ints[0], ints[1]
+    lo, hi = ints[2:2 + n], ints[2 + n:]
+    ident = [e.event_id or e.hyp for e in rest]
+    fits = [[False] * n for _ in range(n)]
+    for i in range(n):
+        li, hi_i, di, row = lo[i], hi[i], ident[i], fits[i]
+        for j in range(i + 1, n):
+            if ident[j] != di and li + lo[j] <= t_hi and hi_i + hi[j] >= t_lo:
+                row[j] = True
+                out.append((rest[i], rest[j]))
+    if max_size >= 3 and (limit_n_for_triples is None or n <= limit_n_for_triples):
+        for i in range(n - 2):
+            di, fi = ident[i], fits[i]
+            for j in range(i + 1, n - 1):
+                if ident[j] == di or fi[j]:
+                    continue
+                a, b, dj, fj = lo[i] + lo[j], hi[i] + hi[j], ident[j], fits[j]
+                need_hi, need_lo = t_hi - a, t_lo - b
+                for k in range(j + 1, n):
+                    if (lo[k] <= need_hi and hi[k] >= need_lo and not fi[k] and not fj[k]
+                            and ident[k] != di and ident[k] != dj):
+                        out.append((rest[i], rest[j], rest[k]))
     return out
+
+
+ENUM_BUDGET = 12_000_000  # combinations the exhaustive search visits (about 0.5 s) before CP-SAT takes over
+
+
+def _search_size(cands: list[Edit], target: Interval, max_size: int) -> int:
+    n = sum(1 for e in cands if not (e.lo <= target.hi and e.hi >= target.lo))
+    return math.comb(n, 2) + (math.comb(n, 3) if max_size >= 3 else 0)
 
 
 def minimal_sets_cpsat(cands: list[Edit], target: Interval, cfg: Config,
@@ -401,24 +433,29 @@ def explain(eff: list[EffectiveEvent], bal: Balance, cfg: Optional[Config] = Non
     if bal.verdict == "balanced":
         return ExplainResult("balanced", target, [], 0, 0, "none")
     cands = candidate_edits(eff, bal, cfg, pieces_expected)
-    if cfg.use_cpsat and HAVE_CPSAT:
+    # Exhaustive enumeration is exact and complete, and faster than CP-SAT until the search
+    # space is very large; it is also the only option where OR-Tools is absent (the app).
+    if cfg.use_cpsat and HAVE_CPSAT and _search_size(cands, target, cfg.max_set_size) > ENUM_BUDGET:
         sets = minimal_sets_cpsat(cands, target, cfg)
         solver = "enumeration + CP-SAT"
     else:
         sets = minimal_sets_bruteforce(cands, target, cfg.max_set_size)
-        solver = "enumeration"
+        solver = "exhaustive enumeration"
     n_slots: dict[str, int] = {}
     for e in cands:
         n_slots[e.hyp] = n_slots.get(e.hyp, 0) + 1
-    exps = []
-    for s in sets:
-        score = _fit(s, target)
-        for e in s:
-            score *= max(cfg.priors.get(e.hyp, 1.0), 0.0) / n_slots[e.hyp]
-        exps.append(Explanation(tuple(sorted(s, key=lambda e: e.key)), score, _point_effect(s, target)))
-    exps.sort(key=lambda x: (-x.score, len(x.edits), x.key))
-    n_found = len(exps)
-    exps = exps[: cfg.max_explanations]
+    weight = {h: max(cfg.priors.get(h, 1.0), 0.0) / k for h, k in n_slots.items()}
+    n_found = len(sets)
+    # Score every set, but build and sort only the ones that will be shown.
+    def score(s_):
+        sc = _fit(s_, target)
+        for e in s_:
+            sc *= weight[e.hyp]
+        return sc
+    ranked = heapq.nsmallest(cfg.max_explanations, ((-score(s_), len(s_), "+".join(sorted(e.key for e in s_)), s_)
+                                                    for s_ in sets))
+    exps = [Explanation(tuple(sorted(s_, key=lambda e: e.key)), -neg, _point_effect(s_, target))
+            for neg, _n, _k, s_ in ranked]
     total = sum(x.score for x in exps)
     for x in exps:
         x.prob = (x.score / total) if total > 0 else 0.0

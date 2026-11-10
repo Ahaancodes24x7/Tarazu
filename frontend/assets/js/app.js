@@ -1,6 +1,6 @@
 // Tarazu workbench. All balances, explanations, checks and conversions come from the server;
 // this file lays them out, collects input and sends it back through the existing endpoints.
-import { api, postOrQueue, flushOutbox, outboxCount } from "./api.js";
+import { api, apiDownload, apiObjectURL, openWalkthrough, postOrQueue, flushOutbox, outboxCount, EMBEDDED } from "./api.js";
 import { drawLines, drawBars } from "./charts.js";
 import { speak } from "./speech.js";
 import { t } from "./i18n.js";
@@ -178,7 +178,7 @@ async function renderJobs(seq = routeSeq) {
         <h1>${esc(isK ? L("jobs") : L("workshop"))}</h1>
         <p class="lede" id="wsLede">${isK ? "Your own jobs only. The figures and explanations are the same ones the jeweller sees." : "Every job on the bench, placed by its fine-metal difference."}</p></div>
       <div class="actions">${isK
-        ? `<a class="btn" href="/api/parties/${esc(S.viewer)}/export?format=csv">${icon("download")}CSV</a><a class="btn primary" href="/api/parties/${esc(S.viewer)}/export">${icon("download")}Export my account</a>`
+        ? `<button class="btn" data-export="csv">${icon("download")}CSV</button><button class="btn primary" data-export="json">${icon("download")}Export my account</button>`
         : `<button class="btn" id="peopleBtn">${icon("users")}${esc(L("people"))}</button><button class="btn primary" id="newJob">${icon("plus")}${esc(L("newJob"))}</button>`}</div>
     </header>
     <div id="jobsBody"><div class="shelf">${Array.from({ length: 6 }, () => `<div class="jcard skel-card"><span class="skel" style="height:56px;width:104px">.</span><span class="skel">Job title placeholder</span><span class="skel" style="width:60%">.</span></div>`).join("")}</div></div>`;
@@ -482,7 +482,7 @@ function readoutHTML(rep, replay) {
       <div class="em ${emCls}"><dt>${esc(L("remaining"))}</dt><dd>${esc(b.raw_g)}<small> g</small></dd><span class="xs muted">${b.verdict === "surplus" ? "negative: more came back than went out" : `agreed allowance ${esc(b.band_lo_g)}–${esc(b.band_hi_g)} g`}</span></div>
       <div><dt>${esc(L("range"))}</dt><dd class="sm">${g3(lo)} to ${g3(hi)}<small> g</small></dd><span class="xs muted">scale and purity uncertainty included</span></div>
     </dl>
-    <p class="xs readout-foot">${replay ? "Replay: computed by the engine from the first records only, with their current (corrected) values." : `Fine (pure) metal, in grams. Computed by the server in ${esc(rep.latency_ms)} ms.`}</p>`;
+    <p class="xs readout-foot">${replay ? "Replay: computed by the engine from the first records only, with their current (corrected) values." : `Fine (pure) metal, in grams. Computed by the engine in ${esc(rep.latency_ms)} ms.`}</p>`;
 }
 
 function whatIfHTML(rep) {
@@ -518,7 +518,7 @@ function measurePanel(rep) {
           <p>Each record's fine metal is its weight × its purity (F = m × φ). Masses are stored as whole micrograms and calculated with exact decimal arithmetic.</p>
           <p>Every weight carries the measurement bound of the scale it was weighed on, and every purity carries the bound of its assay method. Adding these up gives the measured range of the difference, from ${g3(lo)} to ${g3(hi)} g.</p>
           <p>The job is within tolerance when that range reaches the agreed wastage band (${esc(b.band_lo_g)}–${esc(b.band_hi_g)} g fine). Otherwise the engine lists explanations that would close the gap.</p>
-          <p class="xs">Computed by the server in ${esc(rep.latency_ms)} ms · solver: ${esc(rep.explain?.solver || "—")}.</p>
+          <p class="xs">Computed by the engine in ${esc(rep.latency_ms)} ms · solver: ${esc(rep.explain?.solver || "—")}.</p>
         </div></details>
     </div></section>`;
 }
@@ -830,7 +830,7 @@ function openRecord(eid) {
         <dt>Entered</dt><dd>${esc(when(e.created_at, S.lang))}${e.created_by ? ` by ${esc(e.created_by)}` : ""}</dd>
         ${e.note ? `<dt>Note</dt><dd>${esc(e.note)}</dd>` : ""}
       </dl></section>
-      ${e.document_id ? `<section><h3 class="label">Document</h3>${e.document_id.startsWith("doc_") ? `<a class="doc-thumb" href="/api/documents/${esc(e.document_id)}" target="_blank" rel="noopener"><img src="/api/documents/${esc(e.document_id)}" alt="Photo of the slip for ${esc(e.label)}"></a>` : `<p class="small">Slip reference ${esc(e.document_id)} (no photo stored).</p>`}</section>` : ""}
+      ${e.document_id ? `<section><h3 class="label">Document</h3>${e.document_id.startsWith("doc_") ? `<button type="button" class="doc-thumb" aria-label="Enlarge the slip photo"><img data-doc="${esc(e.document_id)}" alt="Photo of the slip for ${esc(e.label)}"></button>` : `<p class="small">Slip reference ${esc(e.document_id)} (no photo stored).</p>`}</section>` : ""}
       ${kids.length || eff.history?.length ? `<section><h3 class="label">History</h3><ol class="history" style="margin-top:6px">
         <li><b>Original</b> · ${esc(e.value_original)} ${esc(e.unit)} at ${esc(e.fineness)}</li>
         ${kids.map(k => `<li><b>${esc(k.label)}</b> · ${esc(k.void ? "voided this record" : k.event_type === "ASSAY" ? `assay: purity ${k.fineness}` : `${k.value_original} ${k.unit}`)}${k.note ? ` <span class="muted">— ${esc(k.note)}</span>` : ""}</li>`).join("")}
@@ -1257,7 +1257,7 @@ let cmdItems = [], cmdIdx = 0, cmdOpener = null;
 function commands() {
   const go = (t, ic, hash) => ({ g: "Go to", t, ic, run: () => { location.hash = hash; } });
   const items = [go(L("jobs"), "jobs", "#jobs"), go(L("instruments"), "scale", "#instruments"), go(L("evaluation"), "chart", "#eval"), go(L("settings"), "settings", "#settings"),
-    { g: "Go to", t: L("walkthrough"), ic: "book", run: () => { location.href = "/demo.html"; } }];
+    { g: "Go to", t: L("walkthrough"), ic: "book", run: () => openWalkthrough() }];
   if (S.job && location.hash.startsWith("#job/")) items.unshift({ g: "This job", t: `${L("addRecord")} · ${S.job.job.title}`, ic: "plus", run: () => openRecordForm(S.job) });
   if (S.role === "jeweller") items.push({ g: "Actions", t: L("newJob"), ic: "plus", run: openNewJob }, { g: "Actions", t: L("people"), ic: "users", run: openPeople }, { g: "Actions", t: L("demo"), ic: "layers", run: seedDemo });
   (S.jobs || []).forEach(j => items.push({ g: "Jobs", t: j.title, sub: `${j.karigar_name} · ${diffLabel(j)}`, ic: "file", run: () => { location.hash = `#job/${j.job_id}`; } }));
@@ -1323,8 +1323,27 @@ addEventListener("keydown", e => {
 
 /* ================================================================ boot */
 async function loadParties() { S.parties = await api("/api/parties"); applyChrome(); }
+// Downloads and slip photos go through the API client, so they work on the server and in the app.
+document.addEventListener("click", e => {
+  const ex = e.target.closest("[data-export]");
+  if (ex) {
+    const fmt = ex.dataset.export;
+    apiDownload(`/api/parties/${encodeURIComponent(S.viewer)}/export${fmt === "csv" ? "?format=csv" : ""}`, `tarazu-account.${fmt}`)
+      .catch(err => toast(err.message));
+    return;
+  }
+  const doc = e.target.closest(".doc-thumb");
+  if (doc) doc.classList.toggle("full");
+});
+new MutationObserver(() => {
+  for (const img of document.querySelectorAll("img[data-doc]:not([src])")) {
+    img.src = "data:,";
+    apiObjectURL(`/api/documents/${encodeURIComponent(img.dataset.doc)}`).then(u => { img.src = u; }, () => { img.alt = "Photo not available"; });
+  }
+}).observe(document.body, { childList: true, subtree: true });
+
 (async function boot() {
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+  if (!EMBEDDED && "serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
   syncStatus();
   try {
     [S.meta] = await Promise.all([api("/api/meta"), loadParties()]);

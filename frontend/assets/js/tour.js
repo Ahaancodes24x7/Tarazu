@@ -16,7 +16,7 @@ const LANDING = [
   { sel: "#scale", title: "The balance", text: "Tap a pan, or use the arrow keys, to place a weight. The beam answers. In the workspace the same idea runs on real records: what was issued against what came back." },
   { sel: "#tag", title: "Three languages", text: "English, हिन्दी and ਪੰਜਾਬੀ throughout. Metal is only ever “unaccounted for”, never missing or stolen." },
   { sel: "#cta .lbtn-secondary", title: "Guided walkthrough", text: "A chalkboard walkthrough of one dispute, step by step, computed by the engine as you watch." },
-  { sel: "#ctaApp", title: "Next: your workspace", text: "Real jobs live here: records, investigations, corrections and settlements. Continue the tour there?", next: "Continue in the workspace", go: "/app?tour=1#jobs" },
+  { sel: "#ctaApp", title: "Next: your workspace", text: "Real jobs live here: records, investigations, corrections and settlements. Continue the tour there?", next: "Continue in the workspace", go: "/app.html?tour=1#jobs" },
 ];
 
 const APP = [

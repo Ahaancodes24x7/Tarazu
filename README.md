@@ -17,10 +17,12 @@ It never accuses anyone. Metal is "unaccounted for", never "missing", "lost" or 
 7. [Screens](#screens)
 8. [Results so far (simulated)](#results-so-far-simulated)
 9. [Run it](#run-it)
-10. [Tests](#tests)
-11. [What is where](#what-is-where)
-12. [Honest limits](#honest-limits)
-13. [What comes next](#what-comes-next)
+10. [The Android app](#the-android-app)
+11. [Running the physical trial](#running-the-physical-trial)
+12. [Tests](#tests)
+13. [What is where](#what-is-where)
+14. [Honest limits](#honest-limits)
+15. [What comes next](#what-comes-next)
 
 ## The problem
 
@@ -329,7 +331,7 @@ xychart-beta
 | Checks to find the cause | 2.88, against 4.08 for a fixed checklist (29% fewer) |
 | Detection by size of fault | 100% at 2× scale error or more, silent at 0.5× |
 | Two-fault cases answered confidently wrong | 0 of 10 |
-| Time to analyse a 30-record job on a laptop | 0.77 s |
+| Time to analyse a 30-record job on a laptop | 0.55 s, checking every one of its 16,051 possible explanations |
 
 ## Run it
 
@@ -341,10 +343,67 @@ python run.py
 | Address | What opens |
 |---|---|
 | http://127.0.0.1:8000 | The landing page |
-| http://127.0.0.1:8000/app | The workspace. On an empty workspace, press Load sample workshop to add five sample jobs, each labelled Sample. |
+| http://127.0.0.1:8000/app.html | The workspace. On an empty workspace, press Load sample workshop to add five sample jobs, each labelled Sample. |
 | http://127.0.0.1:8000/demo.html | The chalkboard walkthrough |
 
 Keyboard shortcuts in the workspace: Ctrl K opens the command palette, ? lists all shortcuts, and g then j, i, e or s jumps between pages.
+
+## The Android app
+
+Tarazu also runs as an installable Android app that needs no server and no internet. The phone runs the same Python engine as the server, compiled to WebAssembly, so there is one engine and one set of tests.
+
+```mermaid
+flowchart LR
+    subgraph Phone["Android phone (no network needed)"]
+        UI["The Bench screens<br/>same HTML, CSS, JS"] -- "/api calls, in memory" --> W["Background worker"]
+        W --> PY["Python engine in WebAssembly<br/>(Pyodide): tarazu.api with<br/>tarazu.lite in place of FastAPI"]
+        PY --> DB[("SQLite on the phone,<br/>saved to app storage<br/>after every change")]
+    end
+```
+
+How it stays fast and small:
+
+1. The engine and its pure-Python libraries are precompiled to bytecode in one 3.8 MB archive, so the phone never compiles source code at start-up.
+2. FastAPI is not shipped. `tarazu.lite` is a small in-process dispatcher that runs the same endpoint functions and pydantic validation. The whole API test suite runs against it as well as against FastAPI, so both give the same answers.
+3. Only two compiled packages are loaded (SQLite and pydantic-core). The app is about 20 MB.
+4. The engine runs in a background worker, so the screen never freezes. The walkthrough opens inside the app and reuses the running engine.
+5. Fonts are bundled. A content security policy stops the pages from contacting anything outside the phone.
+
+Build it:
+
+```
+cd mobile
+npm install
+npm run build        # builds mobile/www and syncs it into the Android project
+npm run open         # opens Android Studio; or: cd android && ./gradlew assembleDebug
+```
+
+You need Python 3.12, Node 22 and, for the APK, Java 21 and the Android SDK. Without a local Android SDK, push to GitHub: the workflow in `.github/workflows/android.yml` runs every test, builds the APK and attaches it to the run as `tarazu-android-apk`.
+
+## Running the physical trial
+
+`backend/tarazu/trial.py` is the toolkit for the real benchmark in protocol sections 5 to 8. It works on a folder of plain CSV sheets, so the people at the bench can fill them in with any spreadsheet program.
+
+```mermaid
+flowchart LR
+    A[init] --> B[instrument] --> C[costs] --> D["schedule<br/>(sealed key)"] --> E["prereg<br/>(commit it)"]
+    E --> F["clean and fault runs"] --> G[blind] --> H[phase3] --> I[freeze] --> J["evaluate<br/>(opens the key)"] --> K[review]
+```
+
+| Command | What it does |
+|---|---|
+| `init` | Creates every sheet: runs, records, ground truth, instrument readings, costs, joint review, consent, payment, data ledger |
+| `instrument` | Phase 0: each scale's uncertainty, drift, linearity, tare effect and day-to-day spread, with warnings when the data is thinner than the protocol asks |
+| `costs` | Builds the check-cost profile from the jeweller's and the karigar's separate ratings |
+| `schedule` | A random, blind fault schedule. The key is sealed and its SHA-256 published, so it cannot be changed afterwards unnoticed |
+| `prereg`, `verify` | Pre-registration of metrics, thresholds, the development split and a fingerprint of the engine code. `verify` fails if anything changed |
+| `blind` | Runs Tarazu on the visible records only and stores each output with the code version |
+| `phase3` | Record-level faults (transcription, duplicates, unit mix-ups, pairs, cancelling faults, malformed entries) on copies of clean runs |
+| `freeze`, `evaluate` | Freezes the test set, then opens the key only if every integrity check passes, and scores every pre-registered criterion with exact intervals |
+| `review` | Phase 4: whether the jeweller and the karigar each read the screen correctly |
+| `simulate` | Fills a workspace with simulated data so the whole pipeline can be practised first |
+
+The step-by-step guide, materials checklist, safety notes and consent scripts in English, Hindi and Punjabi are in [docs/trial](docs/trial/TRIAL_GUIDE.md).
 
 ## Tests
 
@@ -353,19 +412,21 @@ cd backend
 python -m pytest -q
 ```
 
-46 tests pass. They cover:
+58 tests pass. They cover:
 
 1. The worked example above.
 2. Pure metal being conserved over random sequences of records (property-based tests with Hypothesis).
 3. A gap inside the error range never being flagged.
 4. One test for each fault type F1 to F9.
 5. Explanations being minimal and physically possible.
-6. The CP-SAT solver agreeing with brute force.
+6. The exhaustive search finding exactly the minimal explanations, and agreeing with CP-SAT.
 7. Check selection, including saying "unresolved".
 8. The no-accusation wording rule in all three languages.
 9. The database refusing edits and deletions.
 10. A karigar being unable to see another karigar's jobs.
-11. The full flow: issue, check, fix, two-sided settlement.
+11. The full flow: issue, check, fix, two-sided settlement, and slip photo upload.
+12. The whole API suite again through the app's in-process dispatcher.
+13. The trial toolkit: sealed keys, pre-registration checks, refusal to open a tampered key, and a full simulated dry run.
 
 ## What is where
 
@@ -373,18 +434,24 @@ python -m pytest -q
 |---|---|
 | `backend/tarazu/units.py` | Converts tola, masha, ratti and g to whole micrograms |
 | `backend/tarazu/ledger.py` | Append-only events, corrections replayed, gap as a range with the agreed wastage |
-| `backend/tarazu/explain.py` | H1 to H9 as record changes; single changes by enumeration, pairs and triples by OR-Tools CP-SAT |
+| `backend/tarazu/explain.py` | H1 to H9 as record changes; an exact, exhaustive search for minimal sets of up to three, with OR-Tools CP-SAT for very large searches |
 | `backend/tarazu/checks.py` | Information gain per unit of cost; stop, confirm or say unresolved; simulator for the baselines |
 | `backend/tarazu/wording.py` | English, Hindi and Punjabi sentences; list of forbidden words |
 | `backend/tarazu/harness.py` | Simulated workshop, random fault insertion, baselines, size sweep |
 | `backend/tarazu/api.py` | FastAPI server; also serves the frontend |
+| `backend/tarazu/lite.py` | The app's in-process stand-in for FastAPI |
+| `backend/tarazu/instrument.py` | The scale-uncertainty rule and the Phase 0 instrument study |
+| `backend/tarazu/trial.py` | The physical-trial toolkit |
 | `frontend/app.html`, `assets/js/app.js`, `assets/css/app.css` | The Bench workspace |
 | `frontend/assets/js/bench.js` | Interactive balances, the gap spectrum and the case balance |
 | `frontend/demo.html`, `assets/js/chalk.js` | The chalkboard walkthrough |
 | `frontend/index.html`, `assets/js/landing.js` | The landing page |
 | `frontend/assets/js/speech.js` | Reads on-screen sentences aloud |
 | `frontend/assets/js/tour.js` | Guided tour of the workspace |
-| `frontend/sw.js` | Offline shell |
+| `frontend/sw.js` | Offline shell for the web version |
+| `frontend/assets/js/engine-worker.js` | Runs the Python engine on the phone |
+| `mobile/` | The Android app (Capacitor); `tools/build_mobile.py` builds its web bundle |
+| `docs/trial/` | Trial guide and consent scripts |
 | `pitch-deck/` | Pitch deck (HTML and PDF) and the screenshots used above |
 
 The frontend is plain JavaScript modules with no build step.
@@ -397,6 +464,7 @@ The frontend is plain JavaScript modules with no build step.
 4. Explanation scores are relative rankings that favour simpler explanations. They are not calibrated probabilities, and the interface labels them that way.
 5. Two errors that cancel out (one weight too high, another too low by the same amount) cannot be seen by design.
 6. Some help text is in English only, and the Hindi and Punjabi need review by native speakers.
+7. The Android app has been tested in Chromium with phone settings, not yet on a physical phone. Its first start takes a few seconds while Python loads; after that each analysis takes well under a second.
 
 ## What comes next
 

@@ -5,13 +5,12 @@ import csv
 import io
 import json
 import os
-import statistics
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -19,7 +18,7 @@ from . import __version__
 from .analysis import analyse, split_effect
 from .checks import DEFAULT_COSTS, FRICTION_MINUTES
 from .explain import HYPOTHESES, Config, explain
-from .harness import run_suite
+from .instrument import U_FINENESS, bound
 from .ledger import EVENT_TYPES, Event, compute_balance, effective_ledger
 from .store import Store, new_id, now
 from .units import UG_PER_UNIT, fmt_g, from_ug, to_ug
@@ -36,8 +35,7 @@ app = FastAPI(title="Tarazu", version=__version__,
               description="Fine-metal dispute investigator. Weighs the evidence; never accuses.")
 _last_harness: dict = {}
 
-DEFAULT_U_FINENESS = {"by construction": "0", "fire assay": "0.0005", "xrf": "0.002", "karat meter": "0.003",
-                      "declared": "0.003", "touchstone": "0.005"}
+DEFAULT_U_FINENESS = U_FINENESS
 
 
 def bad(msg: str, code: int = 422):
@@ -471,7 +469,7 @@ def document(did: str):
     d = store.document(did)
     if not d or not (SLIPS / did).exists():
         bad("No photo stored for this slip", 404)
-    return FileResponse(SLIPS / did, media_type=d["mime"])
+    return Response((SLIPS / did).read_bytes(), media_type=d["mime"], headers={"Cache-Control": "private, max-age=86400"})
 
 
 # ------------------------------------------------------------ instruments
@@ -511,14 +509,8 @@ def calibrate(iid: str, body: CalibrationIn):
         bad("Enter at least 5 repeat readings (the protocol asks for 30 per check weight)")
     ref = to_ug(body.check_weight_g, "g")
     rd = [to_ug(r, "g") for r in body.readings_g]
-    devs = [r - ref for r in rd]
-    bias = statistics.mean(devs)
-    s = statistics.stdev(devs)
-    maxdev = max(abs(d) for d in devs)
-    u = int(max(abs(bias) + 3 * s, maxdev, inst["readability_ug"]))
-    result = {"n": len(rd), "bias_ug": round(bias, 1), "sd_ug": round(s, 1), "max_dev_ug": maxdev,
-              "u_mass_ug": u, "method": f"max(|bias|+3s, max deviation, readability) from {len(rd)} readings of "
-                                       f"{body.check_weight_g} g"}
+    result = {**bound(ref, rd, inst["readability_ug"]),
+              "method": f"max(|bias|+3s, max deviation, readability) from {len(rd)} readings of {body.check_weight_g} g"}
     store.add_calibration(iid, ref, rd, result)
     return {**result, "instrument": store.instrument(iid)}
 
@@ -569,6 +561,7 @@ class HarnessIn(BaseModel):
 def harness(body: HarnessIn):
     if not (10 <= body.n_clean <= 200 and 2 <= body.n_per_fault <= 40 and 2 <= body.n_sweep <= 30):
         bad("Keep run counts modest: clean 10-200, per fault 2-40, sweep 2-30")
+    from .harness import run_suite  # imported on demand: it is the heaviest module and rarely used
     global _last_harness
     _last_harness = run_suite(body.seed, body.n_clean, 40, body.n_per_fault, body.n_sweep, body.n_pairs)
     return _last_harness

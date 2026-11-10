@@ -6,6 +6,9 @@
    Brass #9B742F is 3.8:1 on canvas, so it is used for marks, rules and large type only.
    ========================================================================== */
 :root {
+  /* safe areas: notches and gesture bars on phones (Capacitor also sets the --safe-area-* fallbacks) */
+  --sat: env(safe-area-inset-top, var(--safe-area-inset-top, 0px));
+  --sab: env(safe-area-inset-bottom, var(--safe-area-inset-bottom, 0px));
   /* colour */
   --canvas: #F6F3EC;
   --surface: #FFFEFA;

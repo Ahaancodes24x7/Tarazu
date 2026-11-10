@@ -52,7 +52,7 @@ class Run:
     run_id: str
     events: list[Event]
     job: dict
-    true_unrecovered_fine: Decimal
+    true_unrecovered_fine: Optional[Decimal]
     fault: Optional[str] = None
     truth: list[tuple] = field(default_factory=list)  # [(hyp, event_id|None, field)]
     magnitude: Optional[float] = None
@@ -281,7 +281,8 @@ def cp_upper(k: int, n: int, conf: float = 0.95) -> float:
     return hi
 
 
-def evaluate_run(run: Run, cfg: Config = FAST, policies=("best", "fixed", "random"), seed: int = 0) -> dict:
+def evaluate_run(run: Run, cfg: Config = FAST, policies=("best", "fixed", "random"), seed: int = 0,
+                 costs: Optional[dict] = None, threshold: float = 0.9, budget_checks: int = 8) -> dict:
     eff = effective_ledger(run.events)
     bal = compute_balance(eff, run.job["wastage_min_pct"], run.job["wastage_max_pct"])
     res = explain(eff, bal, cfg, int(run.job.get("pieces_expected") or 0))
@@ -297,7 +298,8 @@ def evaluate_run(run: Run, cfg: Config = FAST, policies=("best", "fixed", "rando
         "point_flag": abs(bal.raw - bal.loss_band.hi) > Decimal(1000) * PHI,
         "dev_from_agreed_ug": float(abs(bal.raw - bal.loss_band.hi)),
         "halfwidth_ug": float(bal.residual.width / 2),
-        "interval_covers_truth": raw_lo <= run.true_unrecovered_fine <= raw_hi,
+        "interval_covers_truth": (None if run.true_unrecovered_fine is None
+                                  else raw_lo <= run.true_unrecovered_fine <= raw_hi),
         "n_expl": len(scored),
     }
     if run.fault and scored:
@@ -305,10 +307,10 @@ def evaluate_run(run: Run, cfg: Config = FAST, policies=("best", "fixed", "rando
         top = max(scored, key=lambda x: x.prob)
         out["top1"] = _matches(top.edits, run.truth)
         truth_edits = _truth_edits(run.truth)
-        checks = build_checks(scored, eff)
+        checks = build_checks(scored, eff, costs)
         first = None
         for pol in policies:
-            sim = simulate(scored, checks, truth_edits, pol, rng=random.Random(seed))
+            sim = simulate(scored, checks, truth_edits, pol, threshold, budget_checks, rng=random.Random(seed))
             out[f"sim_{pol}"] = {
                 "status": sim["status"], "checks": sim["checks"], "minutes": sim["minutes"],
                 "correct": bool(sim["best"] is not None and sim["status"] == "resolved"
@@ -317,7 +319,7 @@ def evaluate_run(run: Run, cfg: Config = FAST, policies=("best", "fixed", "rando
                                         and not _matches(sim["best"].edits, run.truth)),
             }
         from .checks import advise
-        adv = advise(scored, checks, set())
+        adv = advise(scored, checks, set(), threshold, budget_checks)
         first = adv.check.kind if adv.check else None
         out["first_check"] = first
         out["first_status"] = adv.status

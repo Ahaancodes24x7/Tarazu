@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tarazu · Fine-metal reconciliation</title>
+<meta name="description" content="Tarazu helps jewellers and karigars trace fine-metal records, compare possible explanations for a difference, and find the next check together.">
+<meta name="theme-color" content="#101A16">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/assets/img/tarazu.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Devanagari:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Noto+Sans+Gurmukhi:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/landing.css">
+<link rel="stylesheet" href="/assets/css/tour.css">
+</head>
+<body class="landing on-dark">
+<canvas id="fx" aria-hidden="true"></canvas>
+<div class="glow" id="glow" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="lnav">
+  <a class="wordmark" href="/" aria-label="Tarazu home"><span>Tarazu</span></a>
+  <a class="btn on-dark-btn" href="/app">Open your workspace</a>
+</header>
+
+<main class="stage" id="top">
+  <div class="instrument" id="scale" role="img" aria-label="A goldsmith's balance. Tap a pan to place a weight on it.">
+    <svg viewBox="0 0 440 260" class="scale-svg" aria-hidden="true">
+      <defs>
+        <linearGradient id="brass" gradientUnits="userSpaceOnUse" x1="40" y1="0" x2="400" y2="0"><stop offset="0" stop-color="#8C6A2A"/><stop offset=".5" stop-color="#E2C27E"/><stop offset="1" stop-color="#8C6A2A"/></linearGradient>
+      </defs>
+      <g class="dial">
+        <path d="M120 214 A100 100 0 0 1 320 214" class="draw dial-arc"/>
+        <g id="ticks"></g>
+        <line id="needle" x1="220" y1="214" x2="220" y2="128" class="needle"/>
+        <circle cx="220" cy="214" r="4" class="pivot-dot"/>
+      </g>
+      <line x1="220" y1="60" x2="220" y2="238" class="draw post"/>
+      <path d="M176 240 Q220 226 264 240" class="draw base"/>
+      <circle cx="220" cy="58" r="5" class="pivot"/>
+      <g id="beam">
+        <line x1="70" y1="58" x2="370" y2="58" class="draw beam-line"/>
+        <circle cx="70" cy="58" r="3" class="end"/><circle cx="370" cy="58" r="3" class="end"/>
+        <rect id="sheen" x="60" y="55" width="40" height="6" rx="3" class="sheen"/>
+      </g>
+      <g id="panL" class="pan">
+        <line x1="0" y1="0" x2="-34" y2="92" class="draw chain"/><line x1="0" y1="0" x2="34" y2="92" class="draw chain"/>
+        <path d="M-46 92 Q0 122 46 92 Z" class="draw bowl"/>
+        <g class="load" id="loadL"></g>
+        <circle class="pan-hit" data-pan="L" cx="0" cy="80" r="56"><title>Place a weight on the issued pan</title></circle>
+      </g>
+      <g id="panR" class="pan">
+        <line x1="0" y1="0" x2="-34" y2="92" class="draw chain"/><line x1="0" y1="0" x2="34" y2="92" class="draw chain"/>
+        <path d="M-46 92 Q0 122 46 92 Z" class="draw bowl"/>
+        <g class="load" id="loadR"></g>
+        <circle class="pan-hit" data-pan="R" cx="0" cy="80" r="56"><title>Place a weight on the returned pan</title></circle>
+      </g>
+      <text x="70" y="250" class="pan-label" id="lblL">ISSUED</text>
+      <text x="370" y="250" class="pan-label" id="lblR">RETURNED</text>
+    </svg>
+    <p class="scale-state" id="scaleState" aria-live="polite">Tap a pan</p>
+  </div>
+
+  <h1 class="title" id="heroTitle" aria-label="Tarazu">Tarazu</h1>
+  <p class="deva" lang="hi">तराज़ू</p>
+  <p class="tagline"><span id="tag">A difference in weight shouldn’t become a difference in trust.</span></p>
+  <div class="cta" id="cta">
+    <a class="btn lbtn-primary" href="/app" id="ctaApp">Open your workspace</a>
+    <a class="btn lbtn-secondary" href="/demo.html">Guided walkthrough</a>
+  </div>
+  <button type="button" class="link-btn" data-tour-start>Take the one-minute tour</button>
+</main>
+
+<footer class="lfoot">
+  <span>Free · open source · works offline</span>
+  <div class="ruler" id="ruler" aria-hidden="true"><i id="rulerMark"></i></div>
+  <span>Jewellers and karigars, on the same page</span>
+</footer>
+
+<script src="/assets/js/landing.js" type="module"></script>
+<script src="/assets/js/tour.js" type="module"></script>
+</body>
+</html>

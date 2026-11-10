@@ -1,0 +1,9 @@
+{
+  "name": "Tarazu: fine-metal dispute investigator",
+  "short_name": "Tarazu",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#060508",
+  "theme_color": "#060508",
+  "icons": [{ "src": "/assets/img/tarazu.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

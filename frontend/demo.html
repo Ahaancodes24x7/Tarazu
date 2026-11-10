@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tarazu · Guided walkthrough</title>
+<meta name="theme-color" content="#F6F3EC">
+<link rel="icon" href="/assets/img/tarazu.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Kalam:wght@300;400;700&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Noto+Sans+Devanagari:wght@400;600&family=Noto+Sans+Gurmukhi:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/chalk.css">
+<style>
+  .demo-top { display: flex; align-items: center; gap: var(--s4); padding: 12px clamp(16px, 4vw, 48px); border-bottom: var(--border); background: var(--surface); }
+  .demo-top .wordmark { color: var(--ink); text-decoration: none; font-family: var(--font-serif); font-size: 24px; }
+  .demo-top nav { margin-left: auto; display: flex; gap: var(--s2); }
+  .demo-main { max-width: 1240px; margin: 0 auto; padding: var(--s7) clamp(16px, 4vw, 48px) var(--s9); }
+  .demo-head { max-width: 760px; margin-bottom: var(--s6); display: grid; gap: var(--s3); }
+  .demo-head h1 { font-family: var(--font-serif); font-weight: 500; font-size: clamp(30px, 3.4vw, 42px); line-height: 1.1; }
+  .demo-head p { color: var(--ink-2); font-size: var(--fs-lg); }
+</style>
+</head>
+<body>
+<header class="demo-top">
+  <a class="wordmark" href="/">Tarazu</a><span class="muted small">Guided walkthrough</span>
+  <nav><a class="btn sm" href="/app">Back to the workspace</a></nav>
+</header>
+<main class="demo-main">
+  <div class="demo-head">
+    <span class="sample-tag">Sample case · synthetic data · nothing is saved</span>
+    <h1>How Tarazu works out a difference, step by step</h1>
+    <p>Seven short steps on a chalkboard, from the slips both sides write to the check that settles the question. Every number is computed by the engine as you watch. Change a number on the tray and the board recalculates.</p>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board">
+      <div class="board-top">
+        <span class="board-step" id="boardStep">Step 1 of 7</span>
+        <h2 class="board-title" id="boardTitle">The job</h2>
+        <div class="board-lang" role="group" aria-label="Board language">
+          <button type="button" data-blang="en" class="on">EN</button><button type="button" data-blang="hi" lang="hi">हिं</button><button type="button" data-blang="pa" lang="pa">ਪੰ</button>
+        </div>
+      </div>
+      <div class="board-grid">
+        <div class="board-body" id="boardBody" aria-live="polite"></div>
+        <aside class="board-note" id="boardNote"></aside>
+      </div>
+      <div class="board-foot" id="boardFoot"></div>
+      <div class="eraser-sweep" aria-hidden="true"></div>
+    </div>
+
+    <div class="tray" id="tray">
+      <div class="tray-scen" role="group" aria-label="Scenario">
+        <button type="button" class="chip-btn on" data-scen="worked">Worked example · 22 K gold</button>
+        <button type="button" class="chip-btn" data-scen="clean">Clean job · silver</button>
+        <button type="button" class="chip-btn" data-scen="stone">Stone left in · silver</button>
+      </div>
+      <div class="tray-fields">
+        <label>Issued <input type="number" data-k="issue" step="0.001" min="0.001"><em>g</em></label>
+        <label>Jewellery back <input type="number" data-k="finished" step="0.001" min="0"><em>g</em></label>
+        <label>Scrap back <input type="number" data-k="scrap" step="0.001" min="0"><em>g</em></label>
+        <label>Fineness <select data-k="fin"><option value="0.999">999 silver</option><option value="0.925">925 silver</option><option value="0.916">916 · 22 K</option><option value="0.750">750 · 18 K</option></select></label>
+        <label>Wastage allowed <input type="number" data-k="wastage" step="0.01" min="0"><em>%</em></label>
+        <label>Scale ± <input type="number" data-k="u" step="0.5" min="0"><em>mg</em></label>
+      </div>
+    </div>
+
+    <div class="demo-ctrls" id="demoCtrls">
+      <button type="button" class="ctrl" id="dPrev" aria-label="Previous step">◀</button>
+      <button type="button" class="ctrl play" id="dPlay" aria-label="Play or pause">▶</button>
+      <button type="button" class="ctrl" id="dNext" aria-label="Next step">▶</button>
+      <ol class="steps" id="dSteps"></ol>
+      <div class="dprog" aria-hidden="true"><i id="dProg"></i></div>
+    </div>
+
+    <details class="raw" id="raw">
+      <summary><span class="mono">{ }</span> See the raw engine output behind this board</summary>
+      <p class="muted small">This is exactly what <code>POST /api/quick</code> returned. The board only formats it.</p>
+      <pre id="rawPre" class="mono"></pre>
+    </details>
+  </div>
+</main>
+<script src="/assets/js/chalk.js" type="module"></script>
+</body>
+</html>

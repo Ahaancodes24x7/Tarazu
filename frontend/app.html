@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tarazu · The Bench</title>
+<meta name="theme-color" content="#0E1512">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/assets/img/tarazu.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Devanagari:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Noto+Sans+Gurmukhi:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/app.css">
+<link rel="stylesheet" href="/assets/css/tour.css">
+<link rel="stylesheet" href="/assets/css/motion.css">
+</head>
+<body class="app bench">
+<a class="skip" href="#main">Skip to content</a>
+<div class="aura" aria-hidden="true"></div>
+
+<header class="rail" id="rail">
+  <a class="rail-brand" href="/" title="Tarazu home">
+    <svg class="mini-scale" viewBox="0 0 30 26" aria-hidden="true"><line x1="15" y1="4" x2="15" y2="24"/><path d="M9 24 H21"/><g id="miniBeam"><line x1="3" y1="6" x2="27" y2="6"/><path d="M3 6 L0 14 Q3 17 6 14 Z M27 6 L24 14 Q27 17 30 14 Z"/></g></svg>
+    <span>Tarazu</span>
+  </a>
+  <nav class="rail-nav" id="nav" aria-label="Main">
+    <span class="nav-ink" id="navInk" aria-hidden="true"></span>
+    <a href="#jobs" data-view="jobs"><span data-ic="jobs"></span><b data-t="jobs">Jobs</b></a>
+    <a href="#instruments" data-view="instruments"><span data-ic="scale"></span><b data-t="instruments">Instruments</b></a>
+    <a href="#eval" data-view="eval"><span data-ic="chart"></span><b data-t="evaluation">Evaluation</b></a>
+    <a href="#settings" data-view="settings"><span data-ic="settings"></span><b data-t="settings">Units &amp; settings</b></a>
+    <a href="/demo.html" class="nav-ext" aria-label="Guided walkthrough" title="Guided walkthrough"><span data-ic="book"></span><b data-t="walkthrough">Guided walkthrough</b></a>
+  </nav>
+  <button type="button" class="rail-cmd" id="cmdBtn" aria-label="Search and commands (Ctrl+K)"><span data-ic="search"></span><span class="cmd-txt">Search or jump to…</span><kbd>Ctrl K</kbd></button>
+  <div class="rail-right">
+    <span class="rail-sync" id="sync" role="status" aria-live="polite"></span>
+    <div class="acct-wrap">
+      <button type="button" class="acct" id="acctBtn" aria-haspopup="true" aria-expanded="false" aria-controls="acctPop"><span class="acct-av" id="acctAv">J</span><span class="acct-lbl" id="acctLbl">Jeweller</span><span data-ic="chevD"></span></button>
+      <div class="acct-pop" id="acctPop" hidden>
+        <div class="account-head"><span class="eyebrow" data-t="demoView">Demo view</span></div>
+        <p class="account-note">This is not a login. It changes what the screen shows. For a karigar view, the server still refuses jobs that belong to another karigar.</p>
+        <label class="field compact"><span>Viewing as</span><select id="viewAs"></select></label>
+        <label class="field compact"><span>Language</span><select id="langSel">
+          <option value="en">English</option><option value="hi" lang="hi">हिन्दी</option><option value="pa" lang="pa">ਪੰਜਾਬੀ</option></select></label>
+        <div class="acct-actions"><button type="button" class="btn sm quiet" id="tourBtn"><span data-ic="compass"></span><span data-t="tour">Project tour</span></button>
+          <button type="button" class="btn sm quiet" id="keysBtn"><span data-ic="info"></span>Shortcuts</button></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="main" id="main" tabindex="-1"></main>
+
+<div class="cmdk-back" id="cmdk" hidden>
+  <div class="cmdk" role="dialog" aria-modal="true" aria-label="Search and commands">
+    <div class="cmdk-in"><span data-ic="search"></span><input id="cmdIn" type="text" placeholder="Search jobs, pages and actions…" autocomplete="off" role="combobox" aria-expanded="true" aria-controls="cmdList" aria-autocomplete="list"><kbd>Esc</kbd></div>
+    <ul class="cmdk-list" id="cmdList" role="listbox" aria-label="Results"></ul>
+    <div class="cmdk-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>/</kbd> or <kbd>Ctrl K</kbd> anywhere</span></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+<div class="sr-only" id="announce" aria-live="polite"></div>
+<script src="/assets/js/app.js" type="module"></script>
+<script src="/assets/js/tour.js" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+/* Motion layer for the workbench.
+   Entrances run once per fresh page visit (body[data-enter="page"]); confirmed data changes use
+   body[data-enter="data"]. Values never count through intermediate readings. Reduced motion turns it all off. */
+
+@keyframes m-up { from { opacity: 0; transform: translateY(10px); } }
+@keyframes m-fade { from { opacity: 0; } }
+@keyframes m-grow { from { transform: scaleX(0); } }
+@keyframes m-pop { 0% { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.12); } 100% { transform: none; } }
+@keyframes m-w { from { width: 0; } }
+@keyframes m-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes m-ring { 0% { box-shadow: 0 0 0 0 rgba(138, 82, 14, .35); } 100% { box-shadow: 0 0 0 8px rgba(138, 82, 14, 0); } }
+@keyframes m-strike { from { background-size: 0 1.5px; } }
+@keyframes m-draw { to { stroke-dashoffset: 0; } }
+@keyframes m-toast { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* ---------- page entrance: staggered blocks ---------- */
+body[data-enter="page"] [data-d] { animation: m-up .46s var(--ease) both; animation-delay: var(--d); }
+body[data-enter="page"] .cases tbody tr,
+body[data-enter="page"] .ledger tbody tr,
+body[data-enter="page"] .expl > li,
+body[data-enter="page"] .inst,
+body[data-enter="page"] .steps-review > li { animation: m-up .4s var(--ease) both; animation-delay: calc(140ms + var(--i, 0) * 40ms); }
+body[data-enter="page"] .counts b { animation: m-up .5s var(--ease) both; animation-delay: .12s; }
+body[data-enter="page"] .page-head h1, body[data-enter="page"] .case-head h1 { animation: m-up .5s var(--ease) both; }
+
+/* ---------- balance visuals (entrance and confirmed data change) ---------- */
+body[data-enter] .strip .seg { transform-box: fill-box; transform-origin: 0 50%; animation: m-grow .7s var(--ease) both; animation-delay: calc(180ms + var(--i, 0) * 70ms); }
+body[data-enter] .strip .seg-gap { transform-origin: 100% 50%; animation-delay: .7s; }
+body[data-enter] .strip .seg-surplus { animation-delay: .7s; }
+body[data-enter] .tol-range { transform-box: fill-box; transform-origin: 50% 50%; animation: m-grow .55s var(--ease) both; animation-delay: .45s; }
+body[data-enter] .tol-band { animation: m-fade .5s ease both; animation-delay: .3s; }
+body[data-enter] .tol-pt { animation: m-pop .4s var(--ease) both; animation-delay: .9s; transform-box: fill-box; transform-origin: center; }
+body[data-enter="data"] .qty-grid dd, body[data-enter="data"] .finding { animation: m-up .34s var(--ease) both; }
+body[data-enter] .weight i::after { animation: m-w .8s var(--ease) both; animation-delay: .35s; }
+body[data-enter] .step-ic.done { animation: m-pop .45s var(--ease) both; animation-delay: .3s; }
+body[data-enter] .strip-key li { animation: m-fade .4s ease both; animation-delay: calc(.4s + var(--i, 0) * 50ms); }
+
+/* ---------- always-on, quiet signals ---------- */
+.next .panel-head .icon { animation: m-pulse 2.8s ease-in-out infinite; }
+.case-head .status.attention { animation: m-ring 2.4s ease-out infinite; }
+.status.draft .icon { animation: m-pulse 2.4s ease-in-out infinite; }
+.sync .dot { animation: m-pulse 3s ease-in-out infinite; }
+
+/* ---------- hover and press feedback ---------- */
+.panel { transition: box-shadow var(--t-mid) var(--ease), border-color var(--t-mid) var(--ease); }
+.panel:hover { box-shadow: var(--shadow-2); }
+.btn .icon { transition: transform var(--t-fast) var(--ease); }
+.btn:hover .icon { transform: translateX(2px); }
+.btn.icon-only:hover .icon, .btn.quiet:hover .icon { transform: none; }
+.btn:active { transform: translateY(1px) scale(.985); }
+.nav a .icon { transition: transform var(--t-fast) var(--ease); }
+.nav a:hover .icon { transform: translateX(2px); }
+.nav a[aria-current="page"]::before { animation: m-grow .3s var(--ease) both; transform-origin: center; }
+.cases tbody tr, .ledger tbody tr { transition: background var(--t-fast), box-shadow var(--t-fast); }
+.cases tbody tr:hover, .ledger tbody tr:hover { box-shadow: inset 3px 0 0 var(--brass); }
+.next-act .icon { transition: transform var(--t-fast) var(--ease); }
+.cases tbody tr:hover .next-act .icon { transform: translateX(4px); }
+.counts button { position: relative; transition: background var(--t-mid) var(--ease); }
+.counts button::after { content: ""; position: absolute; left: 16px; right: 16px; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: var(--brass); transform: scaleX(0); transition: transform var(--t-mid) var(--ease); }
+.counts button[aria-pressed="true"]::after { transform: scaleX(1); }
+.counts button:hover b { color: var(--brass-text); }
+.chipref { transition: transform var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast); }
+.chipref:hover { transform: translateY(-1px); box-shadow: var(--shadow-1); }
+.outcomes .btn { transition: background var(--t-fast), border-color var(--t-fast), padding var(--t-fast); }
+.outcomes .btn:hover { border-color: var(--ink); background: var(--canvas); padding-left: 20px; }
+.seg button, .choice button { transition: background var(--t-fast), color var(--t-fast), box-shadow var(--t-fast); }
+.strip .seg:not(.seg-gap):not(.seg-surplus):hover { opacity: .82; }
+.strip-key li { transition: background var(--t-fast); cursor: pointer; }
+.strip-key li:hover { background: var(--subtle); }
+.field input, .field select, .field textarea { transition: border-color var(--t-fast), box-shadow var(--t-fast), background var(--t-fast); }
+.field input:hover, .field select:hover { border-color: var(--ink-2); }
+.expl > li { transition: background var(--t-mid); }
+.expl > li:hover { background: var(--canvas); }
+.expl > li.confirmed:hover { background: var(--evidence-tint); }
+.reading { animation: m-pop .3s var(--ease) both; }
+.inst { transition: background var(--t-fast); }
+.inst:hover { background: var(--canvas); }
+.tile { transition: transform var(--t-mid) var(--ease), box-shadow var(--t-mid); }
+.tile:hover { transform: translateY(-2px); box-shadow: var(--shadow-2); }
+
+/* explanation ruled out by the latest check: the strike line draws across */
+.expl li.ruled-out h3 { text-decoration: none; background: linear-gradient(var(--error), var(--error)) no-repeat 0 58% / 100% 1.5px; display: inline; }
+.expl li.ruled-out.is-changed h3 { animation: m-strike .7s var(--ease) both; animation-delay: .2s; }
+
+/* toasts show their remaining time */
+.toast { position: relative; overflow: hidden; }
+.toast::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: rgba(255, 255, 255, .5); transform-origin: left; animation: m-toast 4.8s linear forwards; }
+.toast.error::after { animation-duration: 8s; }
+
+/* mobile next-action bar slides in */
+.next-bar { animation: m-up .4s var(--ease) both; animation-delay: .5s; }
+
+/* sidebar instrument: tilts with the open case's verdict */
+.mini-scale { width: 30px; height: 26px; flex: none; align-self: center; overflow: visible; }
+.mini-scale line, .mini-scale path { stroke: var(--brass); stroke-width: 1.6; fill: none; stroke-linecap: round; }
+.mini-scale #miniBeam { transform-origin: 15px 6px; transition: transform .9s cubic-bezier(.3, 1.6, .5, 1); }
+.wordmark { align-items: center !important; }
+
+/* evaluation charts draw in */
+.chart-panel .draw-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: m-draw 1.1s var(--ease) forwards; }
+.chart-panel .grow-bar { transform-box: fill-box; transform-origin: 0 50%; animation: m-grow .7s var(--ease) both; animation-delay: calc(var(--i, 0) * 80ms); }
+.chart-panel circle { animation: m-pop .35s var(--ease) both; animation-delay: .8s; transform-box: fill-box; transform-origin: center; }
+.dots circle { animation: m-pop .4s var(--ease) both; animation-delay: calc(var(--i, 0) * 30ms); transform-box: fill-box; transform-origin: center; }
+
+/* converter values flash when the server answers */
+.conv-table tr.is-changed td { animation: changed 1s var(--ease) 1; }
+.chart-panel .fade-line { animation: m-fade 1s ease both; animation-delay: .35s; }
+
+/* ---------- the bench ---------- */
+@keyframes blk-drop { from { transform: translateY(-46px); opacity: 0; } 70% { opacity: 1; } }
+body[data-enter="page"] .jcard { animation: m-up .5s var(--ease) both; animation-delay: calc(120ms + var(--i, 0) * 45ms); }
+body[data-enter="page"] .sp-mk { animation: m-pop .45s var(--ease) both; animation-delay: calc(260ms + var(--i, 0) * 40ms); transform-box: fill-box; transform-origin: center; }
+body[data-enter] .blk { animation: blk-drop .55s cubic-bezier(.3, 1.3, .5, 1) both; animation-delay: calc(240ms + var(--i, 0) * 90ms); transform-box: fill-box; }
+body[data-enter] .ghost { animation: m-fade .6s ease both; animation-delay: .9s; }
+body[data-enter="page"] .rdgs > div { animation: m-up .4s var(--ease) both; }
+body[data-enter="page"] .rdgs > div:nth-child(2) { animation-delay: .06s; } body[data-enter="page"] .rdgs > div:nth-child(3) { animation-delay: .12s; } body[data-enter="page"] .rdgs > div:nth-child(4) { animation-delay: .18s; }
+body[data-enter="data"] .rdgs dd { animation: m-up .34s var(--ease) both; }
+.wi, .chips button { transition: background var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast); }
+.wi:active, .chips button:active { transform: scale(.97); }
+.acct-av { transition: transform .3s var(--ease); }
+.acct:hover .acct-av { transform: rotate(-8deg) scale(1.05); }
+.rail-brand:hover #miniBeam { transform: rotate(-10deg); }

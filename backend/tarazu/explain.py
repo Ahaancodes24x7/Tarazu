@@ -22,11 +22,13 @@ from typing import Optional
 from .ledger import ZERO, Balance, EffectiveEvent, Interval, fine_interval
 from .units import UG_PER_UNIT, to_decimal, to_ug
 
-try:  # optional, used for the combination step
-    from ortools.sat.python import cp_model  # type: ignore
+# OR-Tools is optional and only needed for very large searches. Importing it pulls in pandas and
+# numpy (over a second), so it is found here but imported only when a search needs it.
+import importlib.util
 
-    HAVE_CPSAT = True
-except Exception:  # pragma: no cover
+try:
+    HAVE_CPSAT = importlib.util.find_spec("ortools.sat.python.cp_model") is not None
+except (ImportError, ValueError):  # pragma: no cover
     HAVE_CPSAT = False
 
 HYPOTHESES = {
@@ -352,6 +354,8 @@ def minimal_sets_cpsat(cands: list[Edit], target: Interval, cfg: Config,
     Minimising the set size first, then cutting every found set (which also
     forbids its supersets), returns subset-minimal explanations only.
     """
+    from ortools.sat.python import cp_model  # type: ignore  # imported on first use (see above)
+
     singles = [(e,) for e in cands if feasible((e,), target)]
     single_keys = {s[0].key for s in singles}
     rest = [e for e in cands if e.key not in single_keys]

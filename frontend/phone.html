@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tarazu on a phone</title>
+<meta name="description" content="The Tarazu workspace exactly as it looks and works on a phone, inside a device frame.">
+<link rel="icon" href="/assets/img/tarazu.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/css/fonts.css">
+<link rel="stylesheet" href="/assets/css/base.css">
+<link rel="stylesheet" href="/assets/css/phone.css">
+</head>
+<body class="phone-page">
+<main class="stage">
+  <section class="intro" aria-labelledby="t">
+    <a class="back" href="/">← Tarazu</a>
+    <p class="eyebrow">Mobile preview</p>
+    <h1 id="t">Tarazu on a phone</h1>
+    <p class="lede">This is the real workspace, running live inside a phone-sized screen. Tap, scroll and type on it exactly as you would on a phone: the bottom tabs, the bench and the walkthrough all use the mobile layout.</p>
+
+    <div class="group" role="group" aria-labelledby="gScreens">
+      <h2 id="gScreens" class="label">Jump to a screen</h2>
+      <div class="chips">
+        <button type="button" class="chip" data-go="#jobs">Workshop</button>
+        <button type="button" class="chip" data-go="case">Worked example case</button>
+        <button type="button" class="chip" data-go="#instruments">Scales</button>
+        <button type="button" class="chip" data-go="#eval">Evaluation</button>
+        <button type="button" class="chip" data-go="walk">Walkthrough</button>
+        <button type="button" class="chip" data-go="tour">Guided tour</button>
+      </div>
+      <p class="hint small" id="seedHint" hidden>The workspace is empty. <button type="button" class="link" id="seed">Load the sample workshop</button> to see real cases.</p>
+    </div>
+
+    <div class="group" role="group" aria-labelledby="gDevice">
+      <h2 id="gDevice" class="label">Device</h2>
+      <div class="pseg" id="devices">
+        <button type="button" data-w="390" data-h="844" aria-pressed="true">Phone 390 × 844</button>
+        <button type="button" data-w="412" data-h="915" aria-pressed="false">Large Android 412 × 915</button>
+        <button type="button" data-w="360" data-h="760" aria-pressed="false">Small 360 × 760</button>
+      </div>
+    </div>
+
+    <div class="group" role="group" aria-labelledby="gEngine">
+      <h2 id="gEngine" class="label">Engine</h2>
+      <div class="pseg" id="engines">
+        <button type="button" data-engine="server" aria-pressed="true">This computer</button>
+        <button type="button" data-engine="app" aria-pressed="false" id="appEngine" disabled>On the phone, offline</button>
+      </div>
+      <p class="small muted" id="engineNote">The screen is served by the Tarazu server on this computer. To preview the offline app build, where the engine runs inside the phone with no network, start it with <code>python tools/serve_app.py</code>.</p>
+    </div>
+
+    <div class="group">
+      <h2 class="label">Open it on your own phone</h2>
+      <p class="small muted" id="lan">Start the server with <code>HOST=0.0.0.0</code>, connect the phone to the same Wi-Fi and open <code>http://&lt;this computer's address&gt;:8000/app.html</code>. For the installable Android app, see <code>DEMO.md</code>.</p>
+    </div>
+  </section>
+
+  <section class="device-wrap" aria-label="Phone preview">
+    <div class="device" id="device" style="--w:390px;--h:844px">
+      <div class="bezel">
+        <div class="statusbar" aria-hidden="true">
+          <span id="clock">9:41</span>
+          <span class="island"></span>
+          <span class="sys">
+            <svg viewBox="0 0 18 12" width="18" height="12"><path d="M1 11h2V8H1zm4 0h2V6H5zm4 0h2V3H9zm4 0h2V1h-2z" fill="currentColor"/></svg>
+            <svg viewBox="0 0 16 12" width="16" height="12"><path d="M8 11.5 5.6 9a3.4 3.4 0 0 1 4.8 0zM3.2 6.6a6.8 6.8 0 0 1 9.6 0l-1.2 1.2a5.1 5.1 0 0 0-7.2 0zM.8 4.2a10.2 10.2 0 0 1 14.4 0L14 5.4a8.5 8.5 0 0 0-12 0z" fill="currentColor"/></svg>
+            <span class="batt"><i></i></span>
+          </span>
+        </div>
+        <iframe id="screen" title="Tarazu on a phone" src="/app.html#jobs"></iframe>
+        <div class="homebar" aria-hidden="true"></div>
+      </div>
+    </div>
+    <p class="caption small muted" id="caption">Live · tap inside the phone</p>
+  </section>
+</main>
+<script src="/assets/js/phone.js" type="module"></script>
+</body>
+</html>

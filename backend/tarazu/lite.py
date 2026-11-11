@@ -15,8 +15,6 @@ same caller drives either implementation.
 from __future__ import annotations
 
 import datetime as _dt
-import email.parser
-import email.policy
 import enum
 import inspect
 import json
@@ -186,6 +184,9 @@ def _err(loc, msg, typ="missing", inp=None):
 
 
 def _multipart(content_type: str, body: bytes) -> tuple[dict, dict]:
+    import email.parser  # only uploads need these; importing them costs start-up time on a phone
+    import email.policy
+
     msg = email.parser.BytesParser(policy=email.policy.HTTP).parsebytes(
         b"Content-Type: " + content_type.encode("latin-1") + b"\r\n\r\n" + body)
     fields, files = {}, {}

@@ -8,6 +8,10 @@
 <meta name="theme-color" content="#101A16">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/assets/img/tarazu.svg" type="image/svg+xml">
+<!-- start the downloads the page will need, in parallel -->
+<link rel="preload" href="/assets/fonts/f24c3215230a.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/868a235a9c8b.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/fonts/c0ab1ea5ed5d.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/css/fonts.css">
 <link rel="stylesheet" href="/assets/css/base.css">
 <link rel="stylesheet" href="/assets/css/landing.css">
@@ -72,7 +76,7 @@
 </main>
 
 <footer class="lfoot">
-  <span>Free · open source · works offline</span>
+  <span>Free · open source · works offline · <a class="foot-link" href="/phone.html">See it on a phone</a></span>
   <div class="ruler" id="ruler" aria-hidden="true"><i id="rulerMark"></i></div>
   <span>Jewellers and karigars, on the same page</span>
 </footer>

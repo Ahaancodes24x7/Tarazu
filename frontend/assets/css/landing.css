@@ -93,3 +93,5 @@ html, body { height: 100%; }
   .cta { margin-top: var(--s4); }
   .link-btn { margin-top: var(--s2); }
 }
+.foot-link { color: inherit; text-underline-offset: 3px; }
+.foot-link:hover { color: var(--ivory, #f4efe2); }

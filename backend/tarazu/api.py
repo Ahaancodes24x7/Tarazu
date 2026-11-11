@@ -35,6 +35,42 @@ app = FastAPI(title="Tarazu", version=__version__,
               description="Fine-metal dispute investigator. Weighs the evidence; never accuses.")
 _last_harness: dict = {}
 
+_COMPRESSED = (".woff2", ".png", ".jpg", ".jpeg", ".webp", ".wasm", ".zip", ".whl")
+
+
+def _install_transport(app_) -> None:
+    """Server only: gzip text responses and set caching rules (the app's in-process dispatcher needs neither).
+
+    Pages, scripts and styles revalidate with their ETag on every load (a 304 costs a few bytes), so an
+    update is never stuck behind a cache. Fonts have content-hashed names and are cached for a year.
+    """
+    if not hasattr(app_, "add_middleware"):
+        return
+    from starlette.middleware.gzip import GZipMiddleware
+
+    class _Gzip(GZipMiddleware):
+        async def __call__(self, scope, receive, send):
+            if scope["type"] == "http" and scope["path"].endswith(_COMPRESSED):
+                return await self.app(scope, receive, send)
+            return await super().__call__(scope, receive, send)
+
+    @app_.middleware("http")
+    async def _cache_headers(request, call_next):
+        res = await call_next(request)
+        p = request.url.path
+        if p.startswith("/api/"):
+            res.headers.setdefault("Cache-Control", "no-store")
+        elif p.startswith("/assets/fonts/"):
+            res.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            res.headers["Cache-Control"] = "no-cache"
+        return res
+
+    app_.add_middleware(_Gzip, minimum_size=800, compresslevel=6)
+
+
+_install_transport(app)
+
 DEFAULT_U_FINENESS = U_FINENESS
 
 

@@ -96,3 +96,32 @@ def test_exhaustive_enumeration_is_minimal_and_complete():
                 if not any(w < keys for w in want):
                     want.add(keys)
         assert got == want
+
+
+def test_baselines_figures_card_and_release(ws):
+    from tarazu import paper
+    trial.evaluate(ws, sensitivity=False)
+    sheets = paper.baseline_sheets(ws, n=6, seed=1)
+    assert sheets["cases"] == 6
+    cases = sorted((ws / "baselines" / "cases").glob("*.md"))
+    text = cases[0].read_text(encoding="utf-8")
+    assert "H1" in text and "count_pieces" in text and "fault" not in text.lower().split("answer")[0]
+    ev = trial._load(ws / "eval_runs.json")
+    rows = []
+    for c in cases:
+        truth = ev[c.stem]["truth"][0]
+        rows.append({"who": "B4", "answered_by": "expert-1", "case_id": c.stem, "cause": truth[0], "record_no": "",
+                     "first_check": paper.HYP_CHECK[truth[0]], "minutes": "6", "note": ""})
+    trial._write(ws / "baselines" / "answers.csv", rows)
+    res = paper.score_baselines(ws)
+    assert res["B4"]["cause"]["k"] == 6 and res["B4"]["first_check_separates"]["k"] == 6
+    figs = paper.figures(ws)
+    assert "false_alerts.svg" in figs["figures"]
+    assert (ws / "figures" / "false_alerts.svg").read_text(encoding="utf-8").startswith("<svg")
+    assert "SIMULATED" in paper.card(ws)["card"] or paper.card(ws)["simulated"]
+    trial._write(ws / "consent_log.csv", [{"participant_code": "sim", "role": "karigar", "language": "hi",
+                                           "date": "2026-11-01", "method": "voice", "reference": "v1",
+                                           "withdrawn_on": "2026-11-05"}])
+    out = paper.release(ws, ws / "release")
+    assert out["runs"] == 0  # every simulated run was by "sim", who withdrew: nothing is released
+    assert (ws / "release" / "SHA256SUMS").exists()

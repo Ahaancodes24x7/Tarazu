@@ -33,7 +33,7 @@ CDN = f"https://cdn.jsdelivr.net/pyodide/v{PYODIDE_VERSION}/full/"
 CORE = ["pyodide.js", "pyodide.asm.js", "pyodide.asm.wasm", "python_stdlib.zip", "pyodide-lock.json"]
 NEEDS = ["pydantic", "sqlite3"]  # what the engine imports; dependencies follow from the lock file
 WHEELS: list[str] = []  # extra pure-Python wheels from PyPI (none: tarazu.lite replaces FastAPI in the app)
-SKIP_FRONT = {"sw.js", "index.html", "manifest.webmanifest"}  # the app needs no service worker or web landing page
+SKIP_FRONT = {"sw.js", "index.html", "manifest.webmanifest", "phone.html"}  # the app needs no service worker or web landing page
 SKIP_ENGINE = {"trial.py"}  # research tooling stays on the laptop
 
 

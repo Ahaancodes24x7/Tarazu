@@ -1,6 +1,6 @@
 // Tarazu workbench. All balances, explanations, checks and conversions come from the server;
 // this file lays them out, collects input and sends it back through the existing endpoints.
-import { api, apiDownload, apiObjectURL, openWalkthrough, postOrQueue, flushOutbox, outboxCount, EMBEDDED } from "./api.js";
+import { api, apiDownload, apiObjectURL, onEngineReady, openWalkthrough, postOrQueue, flushOutbox, outboxCount, EMBEDDED } from "./api.js";
 import { drawLines, drawBars } from "./charts.js";
 import { speak } from "./speech.js";
 import { t } from "./i18n.js";
@@ -475,7 +475,9 @@ function readoutHTML(rep, replay) {
   const b = rep.balance;
   const lo = +b.residual_lo_g + +b.band_hi_g, hi = +b.residual_hi_g + +b.band_lo_g;
   const emCls = b.verdict === "balanced" ? "ok" : b.verdict === "surplus" ? "surplus" : "";
-  return `<p class="finding">${esc(rep.narration[0] || "")}</p>
+  const [first, ...rest] = rep.narration || [];
+  // Read aloud speaks exactly these sentences, taken from the screen itself (protocol 9, step 5).
+  return `<div class="narr" data-say><p class="finding">${esc(first || "")}</p>${rest.length ? `<details class="narr-more"><summary class="xs">What read aloud says</summary>${rest.map(l => `<p class="small">${esc(l)}</p>`).join("")}</details>` : ""}</div>
     <dl class="rdgs">
       <div><dt>${esc(L("issued"))}</dt><dd>${esc(b.fine_in_g)}<small> g</small></dd></div>
       <div><dt>${esc(L("accounted"))}</dt><dd>${esc(b.fine_out_g)}<small> g</small></dd>${+b.fine_deduct_g ? `<span class="xs muted">+ ${esc(b.fine_deduct_g)} g stones deducted</span>` : ""}</div>
@@ -713,7 +715,11 @@ function bindJob() {
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   $("#addRec").addEventListener("click", () => openRecordForm(d));
   $("#addFirst")?.addEventListener("click", () => openRecordForm(d));
-  $("#speak").addEventListener("click", async () => { const r = await speak(rep.narration, S.lang); toast(r.note); });
+  $("#speak").addEventListener("click", async () => {
+    const lines = Array.from(document.querySelectorAll("[data-say] p"), p => p.textContent.trim()).filter(Boolean);
+    const r = await speak(lines, S.lang);
+    toast(r.note);
+  });
   $("#chgClose")?.addEventListener("click", () => { S.changes = null; $(".changes")?.remove(); });
   $("#goNext")?.addEventListener("click", e => { e.preventDefault(); const n = $("#nextCheck"); n.scrollIntoView({ block: "start" }); n.focus({ preventScroll: true }); });
   $$(".changes a[href='#review']").forEach(a => a.addEventListener("click", e => { e.preventDefault(); const n = $("#review"); n.scrollIntoView({ block: "start" }); n.focus({ preventScroll: true }); }));
@@ -1345,10 +1351,17 @@ new MutationObserver(() => {
 (async function boot() {
   if (!EMBEDDED && "serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
   syncStatus();
-  try {
-    [S.meta] = await Promise.all([api("/api/meta"), loadParties()]);
-    S.instruments = await api("/api/instruments");
-  } catch { /* route() shows the error state */ }
+  // Everything the first screen needs, requested at once. The job list is started too, so the
+  // workshop's own request shares it instead of waiting for these to finish.
+  const view = (location.hash.slice(1) || "jobs").split("/")[0];
+  if (view === "jobs") api(`/api/jobs${S.role === "karigar" ? `?karigar_id=${encodeURIComponent(S.viewer)}` : ""}`).catch(() => {});
+  const load = async () => {
+    try { [S.meta, , S.instruments] = await Promise.all([api("/api/meta"), loadParties(), api("/api/instruments")]); }
+    catch { /* route() shows the error state */ }
+  };
+  await load();
   applyChrome();
   route();
+  // In the app, the first screen may come from the start-up cache: redraw from the engine once it is up.
+  onEngineReady(async () => { await load(); applyChrome(); S.lastKey = null; route(); });
 })();

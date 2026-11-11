@@ -6,6 +6,8 @@ It never accuses anyone. Metal is "unaccounted for", never "missing", "lost" or 
 
 ![The workshop view](pitch-deck/images/workshop.png)
 
+Showing it to someone? [DEMO.md](DEMO.md) has the exact steps for a 7-minute and a 2-minute demo.
+
 ## Contents
 
 1. [The problem](#the-problem)
@@ -345,6 +347,7 @@ python run.py
 | http://127.0.0.1:8000 | The landing page |
 | http://127.0.0.1:8000/app.html | The workspace. On an empty workspace, press Load sample workshop to add five sample jobs, each labelled Sample. |
 | http://127.0.0.1:8000/demo.html | The chalkboard walkthrough |
+| http://127.0.0.1:8000/phone.html | The mobile preview: the live workspace inside a phone frame, with device sizes and a switch to the offline app build (start that with `python tools/serve_app.py`) |
 
 Keyboard shortcuts in the workspace: Ctrl K opens the command palette, ? lists all shortcuts, and g then j, i, e or s jumps between pages.
 
@@ -361,13 +364,15 @@ flowchart LR
     end
 ```
 
-How it stays fast and small:
+How it stays fast and small (measured in Chromium at phone size: first start about 7 s, a returning visit shows the workshop in 0.2 s, each analysis about 50 ms):
 
 1. The engine and its pure-Python libraries are precompiled to bytecode in one 3.8 MB archive, so the phone never compiles source code at start-up.
 2. FastAPI is not shipped. `tarazu.lite` is a small in-process dispatcher that runs the same endpoint functions and pydantic validation. The whole API test suite runs against it as well as against FastAPI, so both give the same answers.
 3. Only two compiled packages are loaded (SQLite and pydantic-core). The app is about 20 MB.
 4. The engine runs in a background worker, so the screen never freezes. The walkthrough opens inside the app and reuses the running engine.
 5. Fonts are bundled. A content security policy stops the pages from contacting anything outside the phone.
+6. Returning visits open in about 0.2 s: the last read-only answers are kept on the phone, the screen is drawn from them at once, and it refreshes itself when the engine is ready. Anything that changes data always waits for the engine.
+7. Downloads, saved records and package installation overlap while WebAssembly starts.
 
 Build it:
 
@@ -402,8 +407,11 @@ flowchart LR
 | `freeze`, `evaluate` | Freezes the test set, then opens the key only if every integrity check passes, and scores every pre-registered criterion with exact intervals |
 | `review` | Phase 4: whether the jeweller and the karigar each read the screen correctly |
 | `simulate` | Fills a workspace with simulated data so the whole pipeline can be practised first |
+| `baselines`, `score-baselines` | Identical blind case sheets for the chatbot (B3) and the human expert (B4), then their answers scored against the key next to Tarazu on the same cases |
+| `figures` | The paper's charts as SVG, straight from `results.json` |
+| `card`, `release` | The dataset card, and the redacted public dataset (operators coded, photos removed, withdrawn participants dropped) with checksums |
 
-The step-by-step guide, materials checklist, safety notes and consent scripts in English, Hindi and Punjabi are in [docs/trial](docs/trial/TRIAL_GUIDE.md).
+The step-by-step guide, materials checklist, safety notes and consent scripts in English, Hindi and Punjabi are in [docs/trial](docs/trial/TRIAL_GUIDE.md). The paper outline, with each claim mapped to the file that will hold its evidence, is in [docs/paper](docs/paper/PAPER_OUTLINE.md).
 
 ## Tests
 
@@ -412,7 +420,7 @@ cd backend
 python -m pytest -q
 ```
 
-58 tests pass. They cover:
+59 tests pass. They cover:
 
 1. The worked example above.
 2. Pure metal being conserved over random sequences of records (property-based tests with Hypothesis).
@@ -426,7 +434,7 @@ python -m pytest -q
 10. A karigar being unable to see another karigar's jobs.
 11. The full flow: issue, check, fix, two-sided settlement, and slip photo upload.
 12. The whole API suite again through the app's in-process dispatcher.
-13. The trial toolkit: sealed keys, pre-registration checks, refusal to open a tampered key, and a full simulated dry run.
+13. The trial toolkit: sealed keys, pre-registration checks, refusal to open a tampered key, a full simulated dry run, and the baseline, figure, dataset-card and release steps.
 
 ## What is where
 
@@ -442,6 +450,7 @@ python -m pytest -q
 | `backend/tarazu/lite.py` | The app's in-process stand-in for FastAPI |
 | `backend/tarazu/instrument.py` | The scale-uncertainty rule and the Phase 0 instrument study |
 | `backend/tarazu/trial.py` | The physical-trial toolkit |
+| `backend/tarazu/paper.py` | Baseline sheets and scoring, paper figures, dataset card and release |
 | `frontend/app.html`, `assets/js/app.js`, `assets/css/app.css` | The Bench workspace |
 | `frontend/assets/js/bench.js` | Interactive balances, the gap spectrum and the case balance |
 | `frontend/demo.html`, `assets/js/chalk.js` | The chalkboard walkthrough |
@@ -452,9 +461,13 @@ python -m pytest -q
 | `frontend/assets/js/engine-worker.js` | Runs the Python engine on the phone |
 | `mobile/` | The Android app (Capacitor); `tools/build_mobile.py` builds its web bundle |
 | `docs/trial/` | Trial guide and consent scripts |
+| `docs/paper/` | Paper outline and reading list |
+| `frontend/phone.html`, `assets/js/phone.js` | The mobile preview page |
+| `tools/serve_app.py` | Serves the offline app build for the preview |
+| `DEMO.md` | Exact demo steps |
 | `pitch-deck/` | Pitch deck (HTML and PDF) and the screenshots used above |
 
-The frontend is plain JavaScript modules with no build step.
+The frontend is plain JavaScript modules with no build step. The server gzips text, revalidates pages with ETags and caches the content-hashed fonts for a year; pages preload their modules and fonts so they download in parallel, and the workspace asks for everything its first screen needs at once. OR-Tools is imported only when a search is large enough to need it, which saves over a second at server start.
 
 ## Honest limits
 

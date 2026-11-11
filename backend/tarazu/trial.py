@@ -15,6 +15,11 @@ files a non-programmer can fill in:
     evaluate    open the key and score everything against the pre-registered criteria
     review      Phase 4 joint sessions: comprehension of both parties
     simulate    fill a workspace with SIMULATED data to dry-run the whole pipeline
+    baselines   case sheets for the chatbot (B3) and the human expert (B4)
+    score-baselines   score their answers against the key, next to Tarazu
+    figures     the paper's charts as SVG, from results.json
+    card        the dataset card
+    release     the redacted public dataset, with checksums
 
 Run: python -m tarazu.trial <command> <workspace> [options]
 """
@@ -467,7 +472,8 @@ def _localised(r: dict) -> bool:
     return bool(r.get("covered"))
 
 
-def evaluate(ws: Path, allow_changed: bool = False, sensitivity: bool = True) -> dict:
+def integrity(ws: Path, allow_changed: bool = False) -> tuple[dict, list[str], list[str]]:
+    """Every condition that must hold before a sealed key may be opened."""
     pre = _load(ws / "prereg.json")
     frozen = _load(ws / "frozen.json")
     commit = _load(ws / "schedule_commitment.json")
@@ -488,7 +494,11 @@ def evaluate(ws: Path, allow_changed: bool = False, sensitivity: bool = True) ->
         problems += changed
     if problems and not allow_changed:
         raise SystemExit("Refusing to open the key: " + "; ".join(problems))
+    return pre, problems, changed
 
+
+def evaluate(ws: Path, allow_changed: bool = False, sensitivity: bool = True) -> dict:
+    pre, problems, changed = integrity(ws, allow_changed)
     key = {r["run_id"]: r for r in _read(ws / "sealed/fault_key.csv") + _read(ws / "sealed/fault_key_phase3.csv")
            if r["run_id"] != "NONCE"}
     inj = {r["run_id"]: r for r in _read(ws / "sealed/injection_log.csv")}
@@ -572,11 +582,25 @@ def evaluate(ws: Path, allow_changed: bool = False, sensitivity: bool = True) ->
         "abstention": rate(abst, len(amb)),
         "cancelling_flagged": rate(sum(ev[i]["detected"] for i in cancel), len(cancel)),
         "malformed_rejected": rate(sum(1 for i in mal_key if i in malformed), len(mal_key)),
-        "not_run": ["B3 chatbot-only baseline", "B4 human-expert baseline (separate experiments)"],
+        "not_run": ["B3 chatbot-only and B4 human-expert baselines: score them with `baselines` and `score-baselines`"],
+    }
+    # Ablations (protocol 7.1): remove one component at a time.
+    res["ablations"] = {
+        "full Tarazu": {"false_alerts": fa["tarazu"], "coverage": res["coverage"], "mean_checks": checks_["best"]["mean_checks"]},
+        "no interval (point residual)": {"false_alerts": fa["B0_plain_ledger"], "coverage": res["coverage"],
+                                         "mean_checks": checks_["best"]["mean_checks"]},
+        "no competing explanations (single best guess)": {"false_alerts": fa["tarazu"], "coverage": res["single_best_guess"],
+                                                          "mean_checks": None},
+        "no next-check selection (fixed order)": {"false_alerts": fa["tarazu"], "coverage": res["coverage"],
+                                                  "mean_checks": checks_["fixed"]["mean_checks"]},
     }
     if sensitivity and pool:
         res["sensitivity"] = _sensitivity(test, pool, score, fz)
     res["pass_fail"] = _pass_fail(res)
+    # Tarazu's own answer per test run, for comparison with the chatbot and expert baselines.
+    _json(ws / "eval_runs.json", {i: {"fault": test[i].fault, "detected": e["detected"], "top1": e.get("top1"),
+                                      "covered": e.get("covered"), "first_check": e.get("first_check"),
+                                      "truth": test[i].truth} for i, e in ev.items()})
     _json(ws / "results.json", res)
     (ws / "RESULTS.md").write_text(_results_md(res), encoding="utf-8")
     return res
@@ -649,6 +673,9 @@ def _results_md(r: dict) -> str:
           f"Malformed runs rejected: {_pct(r['malformed_rejected'])}", "", "## Pre-registered criteria", "",
           "| Criterion | Result |", "|---|---|"]
     L += [f"| {k} | {'pass' if v else 'MISS' if v is False else 'not measured'} |" for k, v in r["pass_fail"].items()]
+    L += ["", "## Ablations", "", "| Variant | False alerts | Coverage | Mean checks |", "|---|---|---|---|"]
+    L += [f"| {k} | {_pct(v['false_alerts'])} | {_pct(v['coverage'])} | {v['mean_checks'] if v['mean_checks'] is not None else 'n/a'} |"
+          for k, v in r.get("ablations", {}).items()]
     L += ["", "Not run here: " + "; ".join(r["not_run"]) + "."]
     return "\n".join(L) + "\n"
 
@@ -747,7 +774,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m tarazu.trial", description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("command", choices=["init", "instrument", "costs", "schedule", "prereg", "verify", "blind",
-                                        "phase3", "freeze", "evaluate", "review", "simulate"])
+                                        "phase3", "freeze", "evaluate", "review", "simulate", "baselines",
+                                        "score-baselines", "figures", "card", "release"])
+    ap.add_argument("--out", type=Path, default=None, help="release folder (release)")
     ap.add_argument("workspace", type=Path)
     ap.add_argument("--dev", nargs="*", default=[], help="development sessions (prereg)")
     ap.add_argument("--seed", type=int, default=None, help="only for dry runs; real schedules use system randomness")
@@ -781,6 +810,12 @@ def main(argv: Optional[list[str]] = None) -> int:
         r = {"label": res["label"], "pass_fail": res["pass_fail"], "report": str(ws / "RESULTS.md")}
     elif cmd == "review":
         r = review(ws)
+    elif cmd in ("baselines", "score-baselines", "figures", "card", "release"):
+        from . import paper
+        r = {"baselines": lambda: paper.baseline_sheets(ws, seed=a.seed),
+             "score-baselines": lambda: paper.score_baselines(ws, a.allow_changed),
+             "figures": lambda: paper.figures(ws), "card": lambda: paper.card(ws),
+             "release": lambda: paper.release(ws, a.out or ws / "release")}[cmd]()
     else:
         r = simulate(ws, a.seed if a.seed is not None else 2026)
     print(json.dumps(r, indent=2, default=str, ensure_ascii=False))

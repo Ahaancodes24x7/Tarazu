@@ -55,18 +55,24 @@ function persist(populate) {
 async function boot() {
   const t0 = performance.now(), marks = {};
   const mark = k => { marks[k] = Math.round(performance.now() - t0); };
-  const manifest = await (await fetch("/py/manifest.json")).json();
+  // Overlap everything that does not depend on Python being up: the manifest and the bytecode
+  // archive download while WebAssembly compiles; the saved records load while packages install.
+  const manifestP = fetch("/py/manifest.json").then(r => r.json());
+  const siteP = manifestP.then(m => fetch("/py/" + m.site)).then(r => r.arrayBuffer());
   py = await loadPyodide({ indexURL: "/pyodide/", fullStdLib: false });
   mark("pyodide");
-  const site = fetch("/py/" + manifest.site).then(r => r.arrayBuffer());
-  await py.loadPackage(manifest.pyodide, { messageCallback: () => {} });
-  mark("packages");
-  py.FS.mkdirTree("/lib");
-  py.FS.writeFile("/lib/site.zip", new Uint8Array(await site));
-  py.FS.mkdirTree("/data");
-  py.FS.mount(py.FS.filesystems.IDBFS, {}, "/data");
-  await persist(true);
-  mark("files");
+  const manifest = await manifestP;
+  await Promise.all([
+    py.loadPackage(manifest.pyodide, { messageCallback: () => {} }).then(() => mark("packages")),
+    (async () => {
+      py.FS.mkdirTree("/lib");
+      py.FS.writeFile("/lib/site.zip", new Uint8Array(await siteP));
+      py.FS.mkdirTree("/data");
+      py.FS.mount(py.FS.filesystems.IDBFS, {}, "/data");
+      await persist(true);
+      mark("files");
+    })(),
+  ]);
   await py.runPythonAsync(BOOT);
   mark("imports");
   handle = py.globals.get("handle");
